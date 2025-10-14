@@ -15,6 +15,9 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false
-  }
+    sourcemap: false,
+    assetsDir: 'assets'
+  },
+  // Vercel部署配置
+  base: process.env.NODE_ENV === 'production' ? '/' : '/'
 })
