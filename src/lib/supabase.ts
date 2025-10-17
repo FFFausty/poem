@@ -1,11 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Supabase客户端配置
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://gmpifcojnkhfypdwmoxt.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtcGlmY29qbmtoZnlwZHdtb3h0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0Njg3MzksImV4cCI6MjA3NjA0NDczOX0.86dT2qZ-pHlCaBKP1vHrN7D3uggl5Ow8jeVjLMg7uvk'
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('缺少Supabase环境变量配置')
+// 开发环境检查环境变量
+if (import.meta.env.DEV && (!supabaseUrl || !supabaseAnonKey)) {
+  console.warn('开发环境：缺少Supabase环境变量配置')
 }
 
 // 创建Supabase客户端实例
