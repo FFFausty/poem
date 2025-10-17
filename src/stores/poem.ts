@@ -1,31 +1,29 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Poem, PoemSearchParams, PoemListResponse } from '@/types'
-import { poemApi } from '@/api'
+import type { Poem } from '@/lib/supabase'
+import { supabasePoemApi, supabaseInteractionApi, supabaseUserApi } from '@/api/supabase'
+import { useUserStore } from './user'
 
 /**
  * 诗词状态管理 Store
- * 负责管理诗词数据、搜索状态和相关操作
+ * 负责管理诗词数据、搜索和互动功能
  */
 export const usePoemStore = defineStore('poem', () => {
+  const userStore = useUserStore()
+  
   // 状态定义
   const poems = ref<Poem[]>([])
   const currentPoem = ref<Poem | null>(null)
   const searchResults = ref<Poem[]>([])
   const favorites = ref<Poem[]>([])
   
-  // 分页状态
-  const currentPage = ref(1)
-  const totalPages = ref(0)
-  const totalCount = ref(0)
-  const hasMore = ref(true)
-  
-  // 搜索状态
-  const searchQuery = ref('')
-  const searchFilters = ref({
-    dynasty: '',
-    author: '',
-    tags: [] as string[]
+  // 分页信息
+  const pagination = ref({
+    page: 1,
+    limit: 10,
+    total: 0,
+    hasNext: false,
+    hasPrev: false
   })
   
   // 加载状态
@@ -34,262 +32,299 @@ export const usePoemStore = defineStore('poem', () => {
   const error = ref<string | null>(null)
 
   /**
-   * 获取诗词列表操作
-   * @param page 页码
-   * @param limit 每页数量
-   * @param filters 筛选条件
-   * @returns 获取结果
+   * 获取诗词列表
    */
-  const fetchPoems = async (
-    page: number = 1,
-    limit: number = 10,
-    filters?: { dynasty?: string; author?: string; tags?: string[] }
-  ): Promise<boolean> => {
+  const fetchPoems = async (params?: { 
+    page?: number; 
+    limit?: number; 
+    dynasty?: string; 
+    author?: string;
+    tags?: string[];
+  }) => {
     try {
       isLoading.value = true
       error.value = null
       
-      const response: PoemListResponse = await poemApi.getPoems({
-        page,
-        limit,
-        ...filters
-      })
-      
-      // 更新状态
-      if (page === 1) {
-        poems.value = response.poems
-      } else {
-        poems.value = [...poems.value, ...response.poems]
+      const result = await supabasePoemApi.getPoems(params)
+      poems.value = result.poems
+      pagination.value = {
+        page: params?.page || 1,
+        limit: params?.limit || 10,
+        total: result.total,
+        hasNext: (params?.page || 1) * (params?.limit || 10) < result.total,
+        hasPrev: (params?.page || 1) > 1
       }
-      
-      currentPage.value = page
-      totalCount.value = response.total
-      totalPages.value = Math.ceil(response.total / limit)
-      hasMore.value = response.hasMore
-      
-      return true
     } catch (err: any) {
-      error.value = err.response?.data?.message || '获取诗词列表失败'
-      return false
+      error.value = err.message || '获取诗词列表失败'
+      throw err
     } finally {
       isLoading.value = false
     }
   }
 
   /**
-   * 搜索诗词操作
-   * @param keyword 搜索关键词
-   * @param params 搜索参数
-   * @returns 搜索结果
+   * 获取诗词详情
    */
-  const searchPoems = async (
-    keyword: string,
-    params?: { page?: number; limit?: number; searchType?: 'all' | 'title' | 'author' | 'content' }
-  ): Promise<boolean> => {
+  const fetchPoemById = async (id: number) => {
+    try {
+      isLoading.value = true
+      error.value = null
+      
+      const poem = await supabasePoemApi.getPoemById(id)
+      currentPoem.value = poem
+      return poem
+    } catch (err: any) {
+      error.value = err.message || '获取诗词详情失败'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /**
+   * 搜索诗词
+   */
+  const searchPoems = async (keyword: string, params?: { 
+    page?: number; 
+    limit?: number;
+    searchType?: 'all' | 'title' | 'author' | 'content';
+  }) => {
     try {
       isSearching.value = true
       error.value = null
-      searchQuery.value = keyword
       
-      const response: PoemListResponse = await poemApi.searchPoems(keyword, params)
-      
-      // 更新搜索状态
-      if (params?.page === 1 || !params?.page) {
-        searchResults.value = response.poems
-      } else {
-        searchResults.value = [...searchResults.value, ...response.poems]
+      const result = await supabasePoemApi.searchPoems(keyword, params)
+      searchResults.value = result.poems
+      pagination.value = {
+        page: params?.page || 1,
+        limit: params?.limit || 10,
+        total: result.total,
+        hasNext: (params?.page || 1) * (params?.limit || 10) < result.total,
+        hasPrev: (params?.page || 1) > 1
       }
-      
-      currentPage.value = params?.page || 1
-      totalCount.value = response.total
-      hasMore.value = response.hasMore
-      
-      return true
     } catch (err: any) {
-      error.value = err.response?.data?.message || '搜索诗词失败'
-      return false
+      error.value = err.message || '搜索诗词失败'
+      throw err
     } finally {
       isSearching.value = false
     }
   }
 
   /**
-   * 获取诗词详情操作
-   * @param id 诗词ID
-   * @returns 获取结果
+   * 获取随机诗词
    */
-  const fetchPoemById = async (id: number): Promise<boolean> => {
+  const fetchRandomPoem = async () => {
     try {
       isLoading.value = true
       error.value = null
       
-      const poem = await poemApi.getPoemById(id)
-      currentPoem.value = poem
-      
-      return true
+      const poem = await supabasePoemApi.getRandomPoem()
+      return poem
     } catch (err: any) {
-      error.value = err.response?.data?.message || '获取诗词详情失败'
-      return false
+      error.value = err.message || '获取随机诗词失败'
+      throw err
     } finally {
       isLoading.value = false
     }
   }
 
   /**
-   * 点赞诗词操作
-   * @param id 诗词ID
-   * @returns 点赞结果
+   * 检查用户是否点赞了诗词
    */
-  const likePoem = async (id: number): Promise<boolean> => {
+  const checkUserLike = async (poemId: number) => {
     try {
-      const response = await poemApi.likePoem(id)
+      if (!userStore.isLoggedIn) {
+        return { liked: false }
+      }
+      
+      const result = await supabaseInteractionApi.checkUserLike(poemId, userStore.user!.id)
+      return result
+    } catch (err: any) {
+      console.error('检查点赞状态失败:', err)
+      return { liked: false }
+    }
+  }
+
+  /**
+   * 点赞诗词
+   */
+  const likePoem = async (poemId: number) => {
+    try {
+      if (!userStore.isLoggedIn) {
+        throw new Error('请先登录')
+      }
+      
+      const result = await supabaseInteractionApi.likePoem(poemId, userStore.user!.id)
       
       // 更新本地状态
-      const poemIndex = poems.value.findIndex(p => p.id === id)
+      if (currentPoem.value?.id === poemId) {
+        currentPoem.value.likes = result.likes
+      }
+      
+      const poemIndex = poems.value.findIndex(p => p.id === poemId)
       if (poemIndex !== -1) {
-        poems.value[poemIndex].likes = response.likes
+        poems.value[poemIndex].likes = result.likes
       }
       
-      if (currentPoem.value?.id === id) {
-        currentPoem.value.likes = response.likes
-      }
-      
-      return response.success
+      return result
     } catch (err: any) {
-      error.value = err.response?.data?.message || '点赞失败'
-      return false
+      error.value = err.message || '点赞失败'
+      throw err
     }
   }
 
   /**
-   * 收藏诗词操作
-   * @param id 诗词ID
-   * @returns 收藏结果
+   * 收藏诗词
    */
-  const favoritePoem = async (id: number): Promise<boolean> => {
+  const favoritePoem = async (poemId: number) => {
     try {
-      const response = await poemApi.favoritePoem(id)
+      if (!userStore.isLoggedIn) {
+        throw new Error('请先登录')
+      }
+      
+      const result = await supabaseInteractionApi.favoritePoem(poemId, userStore.user!.id)
       
       // 更新本地状态
-      const poemIndex = poems.value.findIndex(p => p.id === id)
+      if (currentPoem.value?.id === poemId) {
+        currentPoem.value.favorites = result.favorites
+      }
+      
+      const poemIndex = poems.value.findIndex(p => p.id === poemId)
       if (poemIndex !== -1) {
-        poems.value[poemIndex].favorites = response.favorites
+        poems.value[poemIndex].favorites = result.favorites
       }
       
-      if (currentPoem.value?.id === id) {
-        currentPoem.value.favorites = response.favorites
-      }
-      
-      return response.success
+      return result
     } catch (err: any) {
-      error.value = err.response?.data?.message || '收藏失败'
-      return false
+      error.value = err.message || '收藏失败'
+      throw err
     }
   }
 
   /**
-   * 获取随机诗词操作
-   * @returns 随机诗词
+   * 获取用户收藏
    */
-  const getRandomPoem = async (): Promise<Poem | null> => {
+  const fetchUserFavorites = async (params?: { page?: number; limit?: number }) => {
     try {
-      const poem = await poemApi.getRandomPoem()
-      return poem
+      if (!userStore.isLoggedIn) {
+        throw new Error('请先登录')
+      }
+      
+      isLoading.value = true
+      error.value = null
+      
+      const result = await supabaseUserApi.getUserFavorites(userStore.user!.id, params)
+      favorites.value = result.favorites.map(fav => fav.poems)
+      pagination.value = {
+        page: params?.page || 1,
+        limit: params?.limit || 10,
+        total: result.total,
+        hasNext: (params?.page || 1) * (params?.limit || 10) < result.total,
+        hasPrev: (params?.page || 1) > 1
+      }
     } catch (err: any) {
-      error.value = err.response?.data?.message || '获取随机诗词失败'
-      return null
+      error.value = err.message || '获取收藏列表失败'
+      throw err
+    } finally {
+      isLoading.value = false
     }
   }
 
   /**
-   * 清除搜索状态
+   * 获取用户点赞记录
    */
-  const clearSearch = (): void => {
-    searchQuery.value = ''
+  const fetchUserLikes = async (params?: { page?: number; limit?: number }) => {
+    try {
+      if (!userStore.isLoggedIn) {
+        throw new Error('请先登录')
+      }
+      
+      isLoading.value = true
+      error.value = null
+      
+      const result = await supabaseUserApi.getUserLikes(userStore.user!.id, params)
+      return result
+    } catch (err: any) {
+      error.value = err.message || '获取点赞记录失败'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /**
+   * 清除搜索结果
+   */
+  const clearSearchResults = () => {
     searchResults.value = []
-    searchFilters.value = {
-      dynasty: '',
-      author: '',
-      tags: []
+    pagination.value = {
+      page: 1,
+      limit: 10,
+      total: 0,
+      hasNext: false,
+      hasPrev: false
     }
   }
 
   /**
    * 清除错误信息
    */
-  const clearError = (): void => {
+  const clearError = () => {
     error.value = null
   }
 
   /**
-   * 重置加载状态
+   * 重置状态
    */
-  const resetLoading = (): void => {
-    isLoading.value = false
-    isSearching.value = false
+  const reset = () => {
+    poems.value = []
+    currentPoem.value = null
+    searchResults.value = []
+    favorites.value = []
+    pagination.value = {
+      page: 1,
+      limit: 10,
+      total: 0,
+      hasNext: false,
+      hasPrev: false
+    }
+    error.value = null
   }
 
   // 计算属性
-  const displayedPoems = computed(() => {
-    return searchQuery.value ? searchResults.value : poems.value
-  })
+  const hasPoems = computed(() => poems.value.length > 0)
+  const hasSearchResults = computed(() => searchResults.value.length > 0)
+  const hasFavorites = computed(() => favorites.value.length > 0)
 
-  const searchStats = computed(() => {
-    return {
-      query: searchQuery.value,
-      count: searchResults.value.length,
-      total: totalCount.value
-    }
-  })
-
-  const filterStats = computed(() => {
-    const activeFilters = Object.entries(searchFilters.value)
-      .filter(([_, value]) => {
-        if (Array.isArray(value)) {
-          return value.length > 0
-        }
-        return value !== ''
-      })
-      .map(([key]) => key)
-    
-    return {
-      activeFilters,
-      count: activeFilters.length
-    }
-  })
-
-  // 返回状态和方法
   return {
     // 状态
     poems,
     currentPoem,
     searchResults,
     favorites,
-    currentPage,
-    totalPages,
-    totalCount,
-    hasMore,
-    searchQuery,
-    searchFilters,
+    pagination,
     isLoading,
     isSearching,
     error,
     
     // 计算属性
-    displayedPoems,
-    searchStats,
-    filterStats,
+    hasPoems,
+    hasSearchResults,
+    hasFavorites,
     
     // 方法
     fetchPoems,
-    searchPoems,
     fetchPoemById,
+    searchPoems,
+    fetchRandomPoem,
+    checkUserLike,
     likePoem,
     favoritePoem,
-    getRandomPoem,
-    clearSearch,
+    fetchUserFavorites,
+    fetchUserLikes,
+    clearSearchResults,
     clearError,
-    resetLoading
+    reset
   }
 })
 

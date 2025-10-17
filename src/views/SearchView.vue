@@ -1,5 +1,6 @@
 <template>
   <div class="search-view">
+    <NavBar />
     <div class="container">
       <div class="search-header">
         <h1>诗词搜索</h1>
@@ -61,7 +62,8 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePoemStore } from '@/stores'
-import type { Poem } from '@/stores'
+import type { Poem } from '@/lib/supabase'
+import NavBar from '@/components/NavBar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -92,10 +94,14 @@ const performSearch = async () => {
         author: '李白',
         dynasty: '唐',
         content: '床前明月光，疑是地上霜。举头望明月，低头思故乡。',
+        category: '诗',
         tags: ['思乡', '月亮'],
+        analysis: '这首诗写的是在寂静的月夜思念家乡的感受。',
         likes: 1234,
         favorites: 567,
-        createdAt: '2024-01-01'
+        image: '',
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01'
       },
       {
         id: 2,
@@ -103,10 +109,14 @@ const performSearch = async () => {
         author: '孟浩然',
         dynasty: '唐',
         content: '春眠不觉晓，处处闻啼鸟。夜来风雨声，花落知多少。',
+        category: '诗',
         tags: ['春天', '自然'],
+        analysis: '这首诗描绘了春天早晨的景色和感受。',
         likes: 890,
         favorites: 345,
-        createdAt: '2024-01-01'
+        image: '',
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01'
       }
     ]
     loading.value = false
@@ -120,7 +130,8 @@ const viewPoemDetail = (poemId: number) => {
 
 <style scoped>
 .search-view {
-  padding: 40px 0;
+  min-height: 100vh;
+  padding-top: 0;
 }
 
 .search-header {

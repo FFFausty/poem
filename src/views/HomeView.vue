@@ -1,5 +1,6 @@
 <template>
   <div class="home">
+    <NavBar />
     <header class="hero-section">
       <div class="container">
         <h1 class="hero-title">诗词赏析</h1>
@@ -18,10 +19,16 @@
 
     <main class="main-content">
       <div class="container">
+        <!-- 加载状态 -->
+        <div v-if="loading" class="loading-section">
+          <div class="loading-spinner"></div>
+          <p>正在加载诗词数据...</p>
+        </div>
+
         <!-- 每日推荐 -->
-        <section class="daily-recommendation">
+        <section class="daily-recommendation" v-if="!loading && dailyPoem">
           <h2>今日推荐</h2>
-          <div class="poem-card" v-if="dailyPoem">
+          <div class="poem-card">
             <h3>{{ dailyPoem.title }}</h3>
             <p class="author">{{ dailyPoem.author }} · {{ dailyPoem.dynasty }}</p>
             <div class="content">
@@ -29,27 +36,46 @@
                 {{ line }}
               </p>
             </div>
+            <div class="stats">
+              <span class="like-count">👍 {{ dailyPoem.likes || 0 }} 点赞</span>
+              <span class="favorite-count">⭐ {{ dailyPoem.favorites || 0 }} 收藏</span>
+            </div>
             <div class="actions">
-              <button class="btn btn-secondary">查看详情</button>
-              <button class="btn btn-secondary">点赞</button>
+              <button 
+                class="btn btn-primary"
+                @click="router.push(`/poem/${dailyPoem.id}`)"
+              >
+                查看详情
+              </button>
             </div>
           </div>
         </section>
 
         <!-- 热门诗词 -->
-        <section class="popular-poems">
+        <section class="popular-poems" v-if="!loading && popularPoems.length > 0">
           <h2>热门诗词</h2>
           <div class="poems-grid">
-            <div v-for="poem in popularPoems" :key="poem.id" class="poem-item">
+            <div 
+              v-for="poem in popularPoems" 
+              :key="poem.id" 
+              class="poem-item"
+              @click="router.push(`/poem/${poem.id}`)"
+            >
               <h4>{{ poem.title }}</h4>
               <p class="author">{{ poem.author }} · {{ poem.dynasty }}</p>
               <p class="excerpt">{{ poem.content.substring(0, 30) }}...</p>
               <div class="stats">
-                <span>👍 {{ poem.likes }}</span>
-                <span>⭐ {{ poem.favorites }}</span>
+                <span class="like-count">👍 {{ poem.likes || 0 }}</span>
+                <span class="favorite-count">⭐ {{ poem.favorites || 0 }}</span>
               </div>
             </div>
           </div>
+        </section>
+
+        <!-- 空状态 -->
+        <section class="empty-state" v-if="!loading && popularPoems.length === 0">
+          <h2>暂无诗词数据</h2>
+          <p>当前还没有诗词内容，请稍后再试</p>
         </section>
       </div>
     </main>
@@ -60,7 +86,8 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePoemStore } from '@/stores'
-import type { Poem } from '@/stores'
+import type { Poem } from '@/lib/supabase'
+import NavBar from '@/components/NavBar.vue'
 
 const router = useRouter()
 const poemStore = usePoemStore()
@@ -68,6 +95,7 @@ const poemStore = usePoemStore()
 const searchKeyword = ref('')
 const dailyPoem = ref<Poem | null>(null)
 const popularPoems = ref<Poem[]>([])
+const loading = ref(true)
 
 const handleSearch = () => {
   if (searchKeyword.value.trim()) {
@@ -78,44 +106,31 @@ const handleSearch = () => {
   }
 }
 
-onMounted(async () => {
-  // 模拟数据
-  dailyPoem.value = {
-    id: 1,
-    title: '静夜思',
-    author: '李白',
-    dynasty: '唐',
-    content: '床前明月光，疑是地上霜。举头望明月，低头思故乡。',
-    tags: ['思乡', '月亮'],
-    likes: 1234,
-    favorites: 567,
-    createdAt: '2024-01-01'
+// 加载真实数据
+const loadRealData = async () => {
+  try {
+    loading.value = true
+    
+    // 获取随机诗词作为每日推荐
+    const randomPoem = await poemStore.fetchRandomPoem()
+    dailyPoem.value = randomPoem
+    
+    // 获取热门诗词（按点赞数排序）
+    await poemStore.fetchPoems({ 
+      limit: 6,
+      page: 1 
+    })
+    popularPoems.value = poemStore.poems
+    
+  } catch (error) {
+    console.error('加载首页数据失败:', error)
+  } finally {
+    loading.value = false
   }
+}
 
-  popularPoems.value = [
-    {
-      id: 2,
-      title: '春晓',
-      author: '孟浩然',
-      dynasty: '唐',
-      content: '春眠不觉晓，处处闻啼鸟。夜来风雨声，花落知多少。',
-      tags: ['春天', '自然'],
-      likes: 890,
-      favorites: 345,
-      createdAt: '2024-01-01'
-    },
-    {
-      id: 3,
-      title: '登鹳雀楼',
-      author: '王之涣',
-      dynasty: '唐',
-      content: '白日依山尽，黄河入海流。欲穷千里目，更上一层楼。',
-      tags: ['登高', '哲理'],
-      likes: 765,
-      favorites: 234,
-      createdAt: '2024-01-01'
-    }
-  ]
+onMounted(async () => {
+  await loadRealData()
 })
 </script>
 
@@ -230,10 +245,60 @@ section h2 {
   margin-bottom: 1rem;
 }
 
+.loading-section {
+  text-align: center;
+  padding: 60px 0;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.poem-card .stats {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  justify-content: center;
+}
+
+.poem-card .like-count,
+.poem-card .favorite-count {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .stats {
   display: flex;
   gap: 15px;
   font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.like-count {
+  color: #e74c3c;
+}
+
+.favorite-count {
+  color: #f39c12;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 0;
   color: var(--text-secondary);
 }
 

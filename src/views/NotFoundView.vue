@@ -1,5 +1,6 @@
 <template>
   <div class="not-found">
+    <NavBar />
     <div class="container">
       <div class="error-content">
         <h1>404</h1>
@@ -16,6 +17,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import NavBar from '@/components/NavBar.vue'
 
 const router = useRouter()
 
@@ -26,11 +28,11 @@ const goBack = () => {
 
 <style scoped>
 .not-found {
-  padding: 80px 0;
   min-height: 100vh;
   display: flex;
   align-items: center;
   background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+  padding-top: 0;
 }
 
 .error-content {

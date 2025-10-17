@@ -1,6 +1,96 @@
 <!-- 基于MasterGo设计的诗词网站首页 -->
 <template>
-  <div class="min-h-screen bg-gray-50 font-sans">
+  <div class="min-h-screen bg-gray-50 font-sans" style="min-height: 100vh;">
+    <!-- 诗词详情模态框 -->
+    <div v-if="selectedPoem" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="p-8">
+          <div class="flex justify-between items-start mb-6">
+            <h2 class="text-3xl font-serif font-bold text-gray-800">《{{ selectedPoem.title }}》</h2>
+            <button @click="selectedPoem = null" class="text-gray-400 hover:text-gray-600 text-2xl">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          
+          <div class="space-y-6">
+            <!-- 诗词基本信息 -->
+            <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <p class="text-xl font-semibold text-gray-800">{{ selectedPoem.author }}</p>
+                  <p class="text-gray-600">{{ selectedPoem.dynasty }}</p>
+                </div>
+                <div class="flex items-center space-x-4 text-gray-600">
+                  <span class="flex items-center">
+                    <i class="fas fa-heart text-red-400 mr-1"></i>
+                    {{ selectedPoem.likes }}
+                  </span>
+                  <span class="flex items-center">
+                    <i class="fas fa-bookmark text-blue-400 mr-1"></i>
+                    {{ selectedPoem.favorites }}
+                  </span>
+                </div>
+              </div>
+              
+              <!-- 诗词内容 -->
+              <div class="text-center">
+                <div class="text-2xl leading-relaxed font-serif text-gray-800 mb-4">
+                  {{ selectedPoem.content }}
+                </div>
+                <div v-if="selectedPoem.analysis" class="text-gray-600 text-sm">
+                  {{ selectedPoem.analysis }}
+                </div>
+              </div>
+            </div>
+            
+            <!-- 诗词标签 -->
+            <div v-if="selectedPoem.tags && selectedPoem.tags.length" class="flex flex-wrap gap-2">
+              <span v-for="tag in selectedPoem.tags" :key="tag" 
+                    class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                {{ tag }}
+              </span>
+            </div>
+            
+            <!-- 诗词赏析 -->
+            <div v-if="selectedPoem.analysis" class="bg-gray-50 rounded-xl p-6">
+              <h3 class="text-lg font-semibold text-gray-800 mb-3">诗词赏析</h3>
+              <p class="text-gray-700 leading-relaxed">{{ selectedPoem.analysis }}</p>
+            </div>
+            
+            <!-- 操作按钮 -->
+            <div class="flex space-x-4 pt-4">
+              <button 
+                @click="likePoem(selectedPoem.id)"
+                :disabled="isLoading"
+                :class="[
+                  'flex-1 py-3 rounded-lg transition',
+                  isLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                ]"
+                class="text-white"
+              >
+                <i class="fas fa-heart mr-2"></i>
+                {{ isLoading ? '处理中...' : '点赞' }}
+              </button>
+              <button 
+                @click="favoritePoem(selectedPoem.id)"
+                :disabled="isLoading"
+                :class="[
+                  'flex-1 py-3 rounded-lg transition',
+                  isLoading ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+                ]"
+                class="text-white"
+              >
+                <i class="fas fa-bookmark mr-2"></i>
+                {{ isLoading ? '处理中...' : '收藏' }}
+              </button>
+              <button class="flex-1 bg-gray-600 text-white py-3 rounded-lg hover:bg-gray-700 transition">
+                <i class="fas fa-share-alt mr-2"></i>分享
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <!-- Navigation Bar -->
     <nav class="fixed top-0 left-0 w-full bg-white bg-opacity-90 backdrop-blur-sm z-50 shadow-sm">
       <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -8,9 +98,9 @@
           <div class="text-2xl font-serif font-bold text-gray-800">诗韵雅集</div>
           <div class="hidden md:flex space-x-8">
             <router-link to="/" class="text-gray-700 hover:text-gray-900 transition">首页</router-link>
-            <router-link to="/search" class="text-gray-700 hover:text-gray-900 transition">诗词分类</router-link>
-            <router-link to="/create" class="text-gray-700 hover:text-gray-900 transition">诗人介绍</router-link>
-            <router-link to="/user" class="text-gray-700 hover:text-gray-900 transition">收藏夹</router-link>
+            <router-link to="/category" class="text-gray-700 hover:text-gray-900 transition">诗词分类</router-link>
+            <router-link to="/authors" class="text-gray-700 hover:text-gray-900 transition">诗人介绍</router-link>
+            <router-link to="/create" class="text-gray-700 hover:text-gray-900 transition">诗词添加</router-link>
             <router-link to="/user" class="text-gray-700 hover:text-gray-900 transition">个人中心</router-link>
           </div>
         </div>
@@ -59,13 +149,13 @@
           <section class="mb-12">
             <h2 class="text-2xl font-serif font-bold text-gray-800 mb-6">诗词分类</h2>
             <div class="flex flex-wrap gap-3">
-              <button class="px-5 py-2 bg-white rounded-full shadow-sm hover:shadow-md transition border border-gray-200">唐诗</button>
-              <button class="px-5 py-2 bg-white rounded-full shadow-sm hover:shadow-md transition border border-gray-200">宋词</button>
-              <button class="px-5 py-2 bg-white rounded-full shadow-sm hover:shadow-md transition border border-gray-200">元曲</button>
-              <button class="px-5 py-2 bg-white rounded-full shadow-sm hover:shadow-md transition border border-gray-200">现代诗</button>
-              <button class="px-5 py-2 bg-white rounded-full shadow-sm hover:shadow-md transition border border-gray-200">山水诗</button>
-              <button class="px-5 py-2 bg-white rounded-full shadow-sm hover:shadow-md transition border border-gray-200">边塞诗</button>
-              <button class="px-5 py-2 bg-white rounded-full shadow-sm hover:shadow-md transition border border-gray-200">田园诗</button>
+              <button 
+                v-for="category in categories" 
+                :key="category.id"
+                class="px-5 py-2 bg-white rounded-full shadow-sm hover:shadow-md transition border border-gray-200 hover:bg-blue-50 hover:border-blue-200"
+              >
+                {{ category.name }} ({{ category.count }})
+              </button>
             </div>
           </section>
 
@@ -73,13 +163,21 @@
           <section class="mb-12">
             <h2 class="text-2xl font-serif font-bold text-gray-800 mb-6">热门诗词排行榜</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition" v-for="(poem, index) in hotPoems" :key="poem.id">
+              <div class="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition cursor-pointer" 
+                   v-for="(poem, index) in hotPoems" :key="poem.id"
+                   @click="showPoemDetail(poem.id)">
                 <div class="flex items-start">
-                  <div class="text-4xl font-bold text-gray-300 mr-4">#{{ index + 1 }}</div>
-                  <div>
+                  <div class="text-4xl font-bold" :class="index < 3 ? 'text-yellow-500' : 'text-gray-300'">#{{ index + 1 }}</div>
+                  <div class="ml-4 flex-1">
                     <h3 class="text-xl font-serif font-bold text-gray-800 mb-1">{{ poem.title }}</h3>
                     <p class="text-gray-600 mb-2">{{ poem.author }}</p>
-                    <p class="text-gray-700">{{ poem.excerpt }}</p>
+                    <p class="text-gray-700 mb-3">{{ poem.excerpt }}</p>
+                    <div class="flex items-center text-sm text-gray-500">
+                      <i class="fas fa-heart text-red-400 mr-1"></i>
+                      <span class="mr-4">{{ poem.likes }} 赞</span>
+                      <i class="fas fa-bookmark text-blue-400 mr-1"></i>
+                      <span>{{ poem.favorites }} 收藏</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -89,34 +187,97 @@
           <!-- Comments Section -->
           <section>
             <h2 class="text-2xl font-serif font-bold text-gray-800 mb-6">诗词赏析评论</h2>
+            
+            <!-- 评论统计 -->
             <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-              <div class="flex items-start mb-6" v-for="comment in comments" :key="comment.id">
-                <img 
-                  :src="comment.avatar" 
-                  alt="用户头像" 
-                  class="w-12 h-12 rounded-full mr-4 object-cover"
-                >
-                <div class="flex-1">
-                  <div class="flex justify-between items-center mb-2">
-                    <h4 class="font-bold text-gray-800">{{ comment.author }}</h4>
-                    <span class="text-gray-500 text-sm">{{ comment.date }}</span>
-                  </div>
-                  <p class="text-gray-700 mb-3">{{ comment.content }}</p>
-                  <div class="flex space-x-4">
-                    <button class="text-gray-500 hover:text-red-500 flex items-center">
-                      <i class="fas fa-heart mr-1"></i>
-                      <span>{{ comment.likes }}</span>
-                    </button>
-                    <button class="text-gray-500 hover:text-blue-500 flex items-center">
-                      <i class="fas fa-reply mr-1"></i>
-                      <span>回复</span>
-                    </button>
-                    <button class="text-gray-500 hover:text-green-500 flex items-center">
-                      <i class="fas fa-share-alt mr-1"></i>
-                      <span>分享</span>
-                    </button>
+              <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-800">全部评论 ({{ totalComments }})</h3>
+                <div class="text-sm text-gray-500">
+                  第 {{ currentPage }} 页，共 {{ Math.ceil(totalComments / commentsPerPage) }} 页
+                </div>
+              </div>
+            </div>
+
+            <!-- 评论列表 -->
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+              <div v-if="commentsLoading" class="text-center py-8">
+                <i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
+                <p class="text-gray-600 mt-2">加载评论中...</p>
+              </div>
+              
+              <div v-else-if="comments.length === 0" class="text-center py-8">
+                <i class="fas fa-comments text-gray-300 text-4xl"></i>
+                <p class="text-gray-600 mt-2">暂无评论，快来发表第一条评论吧！</p>
+              </div>
+              
+              <div v-else>
+                <div class="flex items-start mb-6 pb-6 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0" 
+                     v-for="comment in comments" :key="comment.id">
+                  <img 
+                    :src="comment.avatar" 
+                    alt="用户头像" 
+                    class="w-12 h-12 rounded-full mr-4 object-cover"
+                  >
+                  <div class="flex-1">
+                    <div class="flex justify-between items-center mb-2">
+                      <h4 class="font-bold text-gray-800">{{ comment.author }}</h4>
+                      <span class="text-gray-500 text-sm">{{ comment.date }}</span>
+                    </div>
+                    <p class="text-gray-700 mb-3 leading-relaxed">{{ comment.content }}</p>
+                    <div class="flex space-x-4">
+                      <button 
+                        @click="likeComment(comment.id)"
+                        class="text-gray-500 hover:text-red-500 flex items-center transition"
+                      >
+                        <i class="fas fa-heart mr-1"></i>
+                        <span>{{ comment.likes }}</span>
+                      </button>
+                      <button class="text-gray-500 hover:text-blue-500 flex items-center transition">
+                        <i class="fas fa-reply mr-1"></i>
+                        <span>回复</span>
+                      </button>
+                      <button class="text-gray-500 hover:text-green-500 flex items-center transition">
+                        <i class="fas fa-share-alt mr-1"></i>
+                        <span>分享</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
+              </div>
+              
+              <!-- 分页导航 -->
+              <div v-if="totalComments > commentsPerPage" class="flex justify-center items-center mt-6 pt-6 border-t border-gray-100">
+                <button 
+                  @click="goToPage(currentPage - 1)"
+                  :disabled="currentPage <= 1"
+                  class="px-4 py-2 bg-gray-100 text-gray-600 rounded-l-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <i class="fas fa-chevron-left mr-2"></i>上一页
+                </button>
+                
+                <div class="flex space-x-1 mx-4">
+                  <button 
+                    v-for="page in Math.ceil(totalComments / commentsPerPage)" 
+                    :key="page"
+                    @click="goToPage(page)"
+                    :class="[
+                      'px-3 py-1 rounded transition',
+                      currentPage === page 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ]"
+                  >
+                    {{ page }}
+                  </button>
+                </div>
+                
+                <button 
+                  @click="goToPage(currentPage + 1)"
+                  :disabled="currentPage >= Math.ceil(totalComments / commentsPerPage)"
+                  class="px-4 py-2 bg-gray-100 text-gray-600 rounded-r-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  下一页<i class="fas fa-chevron-right ml-2"></i>
+                </button>
               </div>
             </div>
             
@@ -180,22 +341,22 @@
             </div>
           </div>
 
-          <!-- My Collection -->
+          <!-- Recent Poems -->
           <div class="bg-white rounded-xl shadow-sm p-6">
             <div class="flex justify-between items-center mb-4">
-              <h3 class="text-xl font-serif font-bold text-gray-800">我的收藏</h3>
-              <router-link to="/user" class="text-blue-600 text-sm">查看全部</router-link>
+              <h3 class="text-xl font-serif font-bold text-gray-800">最新诗词</h3>
+              <router-link to="/search" class="text-blue-600 text-sm">查看全部</router-link>
             </div>
             <div class="space-y-4">
-              <div class="flex items-center p-3 hover:bg-gray-50 rounded-lg transition cursor-pointer" v-for="item in collections" :key="item.id">
-                <img 
-                  :src="item.image" 
-                  alt="诗词配图" 
-                  class="w-12 h-12 rounded-lg mr-3 object-cover"
-                >
+              <div class="flex items-center p-3 hover:bg-gray-50 rounded-lg transition cursor-pointer" 
+                   v-for="poem in allPoems.slice(0, 3)" :key="poem.id"
+                   @click="showPoemDetail(poem.id)">
+                <div class="w-12 h-12 rounded-lg mr-3 bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                  <i class="fas fa-book text-blue-500"></i>
+                </div>
                 <div>
-                  <h4 class="font-bold text-gray-800">{{ item.title }}</h4>
-                  <p class="text-gray-600 text-sm">{{ item.author }}</p>
+                  <h4 class="font-bold text-gray-800">{{ poem.title }}</h4>
+                  <p class="text-gray-600 text-sm">{{ poem.author }} · {{ poem.dynasty }}</p>
                 </div>
               </div>
             </div>
@@ -216,9 +377,10 @@
             <h4 class="text-lg font-bold mb-4">快速链接</h4>
             <ul class="space-y-2 text-gray-400">
               <li><router-link to="/" class="hover:text-white transition">首页</router-link></li>
-              <li><router-link to="/search" class="hover:text-white transition">诗词分类</router-link></li>
-              <li><router-link to="/create" class="hover:text-white transition">诗人介绍</router-link></li>
-              <li><router-link to="/user" class="hover:text-white transition">收藏夹</router-link></li>
+              <li><router-link to="/category" class="hover:text-white transition">诗词分类</router-link></li>
+              <li><router-link to="/authors" class="hover:text-white transition">诗人介绍</router-link></li>
+              <li><router-link to="/create" class="hover:text-white transition">诗词添加</router-link></li>
+              <li><router-link to="/user" class="hover:text-white transition">个人中心</router-link></li>
             </ul>
           </div>
           <div>
@@ -263,99 +425,396 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import poemsData from '@/data/poems.json'
+import { supabaseInteractionApi, supabaseUserApi } from '@/api/supabase'
+import { supabase } from '@/lib/supabase'
 
-// 热门诗词数据
-const hotPoems = ref([
-  {
-    id: 1,
-    title: '将进酒',
-    author: '李白',
-    excerpt: '君不见黄河之水天上来，奔流到海不复回...'
-  },
-  {
-    id: 2,
-    title: '水调歌头',
-    author: '苏轼',
-    excerpt: '明月几时有？把酒问青天。不知天上宫阙...'
-  },
-  {
-    id: 3,
-    title: '念奴娇·赤壁怀古',
-    author: '苏轼',
-    excerpt: '大江东去，浪淘尽，千古风流人物...'
-  },
-  {
-    id: 4,
-    title: '登高',
-    author: '杜甫',
-    excerpt: '风急天高猿啸哀，渚清沙白鸟飞回...'
-  }
-])
+// 诗词详情模态框
+const selectedPoem = ref<any>(null)
 
-// 评论数据
-const comments = ref([
-  {
-    id: 1,
-    author: '墨韵书香',
-    avatar: 'https://ai-public.mastergo.com/ai/img_res/8dffa57897e12c1023bcf70a26df9333.jpg',
-    date: '2023年 11月 15日',
-    content: '这首《静夜思》以明白如话的朴素语言，表达出深沉的思乡之情。"举头望明月，低头思故乡"这一仰一俯的动作，把游子的思乡之情表现得淋漓尽致。',
-    likes: 24
-  },
-  {
-    id: 2,
-    author: '诗韵清风',
-    avatar: 'https://ai-public.mastergo.com/ai/img_res/b1a6adaa941787143bde660b2a7cd0bb.jpg',
-    date: '2023年 11月 16日',
-    content: '深有同感！李白的这首诗虽然语言简单，但意境深远，千百年来引起无数游子的共鸣。',
-    likes: 8
-  },
-  {
-    id: 3,
-    author: '文墨青年',
-    avatar: 'https://ai-public.mastergo.com/ai/img_res/3a46c44c2389f96fe5fb81f90a516ca0.jpg',
-    date: '2023年 11月 17日',
-    content: '这首诗的妙处在于通过具体的动作描写来表达抽象的情感。"疑是地上霜"这一错觉的描写，更加突出了夜晚的寂静和诗人的孤独。',
-    likes: 15
-  }
-])
+// 热门诗词数据 - 使用真实数据
+const hotPoems = ref<any[]>([])
+const allPoems = ref<any[]>([])
+const categories = ref<any[]>([])
+const tags = ref<string[]>([])
 
-// 收藏数据
-const collections = ref([
-  {
-    id: 1,
-    title: '梅花',
-    author: '王安石',
-    image: 'https://ai-public.mastergo.com/ai/img_res/9dbe0bb6d0219e483bacd5befd426f58.jpg'
-  },
-  {
-    id: 2,
-    title: '爱莲说',
-    author: '周敦颐',
-    image: 'https://ai-public.mastergo.com/ai/img_res/da2917af9d4826201c10f3ad77111919.jpg'
-  },
-  {
-    id: 3,
-    title: '山行',
-    author: '杜牧',
-    image: 'https://ai-public.mastergo.com/ai/img_res/7715071621e0f08f81db8fb6d714dabd.jpg'
-  }
-])
+// 当前用户
+const currentUser = ref<any>(null)
+const isLoading = ref(false)
 
+// 评论相关变量
+const comments = ref<any[]>([])
 const newComment = ref('')
+const currentPage = ref(1)
+const commentsPerPage = 10
+const totalComments = ref(0)
+const commentsLoading = ref(false)
 
-const submitComment = () => {
-  if (newComment.value.trim()) {
-    comments.value.unshift({
-      id: comments.value.length + 1,
-      author: '当前用户',
-      avatar: 'https://ai-public.mastergo.com/ai/img_res/0ebece82af24e565971af2825f1f54a8.jpg',
-      date: '刚刚',
-      content: newComment.value,
-      likes: 0
-    })
+onMounted(async () => {
+  // 初始化诗词数据
+  allPoems.value = poemsData.poems
+  categories.value = poemsData.categories
+  tags.value = poemsData.tags
+  
+  // 按点赞数排序获取热门诗词
+  hotPoems.value = [...poemsData.poems]
+    .sort((a, b) => b.likes - a.likes)
+    .slice(0, 4)
+    .map(poem => ({
+      id: poem.id,
+      title: poem.title,
+      author: poem.author,
+      excerpt: poem.content.substring(0, 20) + '...',
+      likes: poem.likes,
+      favorites: poem.favorites
+    }))
+
+  // 检查用户登录状态
+  await checkUserAuth()
+  
+  // 加载评论数据
+  await loadCommentsFromDatabase()
+})
+
+// 检查用户认证状态
+const checkUserAuth = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      try {
+        currentUser.value = await supabaseUserApi.getCurrentUser()
+      } catch (error) {
+        console.log('获取用户信息失败，用户可能未完成注册:', error)
+      }
+    }
+  } catch (error) {
+    console.error('检查用户认证状态失败:', error)
+  }
+}
+
+// 点赞诗词
+const likePoem = async (poemId: number) => {
+  if (isLoading.value) return
+  
+  // 检查用户是否登录
+  if (!currentUser.value) {
+    alert('请先登录后再点赞')
+    return
+  }
+
+  isLoading.value = true
+  
+  try {
+    // 尝试使用Supabase API
+    const result = await supabaseInteractionApi.likePoem(poemId, currentUser.value.id)
+    
+    // 更新诗词详情模态框中的点赞数
+    if (selectedPoem.value && selectedPoem.value.id === poemId) {
+      selectedPoem.value.likes = result.likes
+    }
+    
+    // 更新热门诗词列表中的点赞数
+    const hotPoemIndex = hotPoems.value.findIndex((p: any) => p.id === poemId)
+    if (hotPoemIndex !== -1) {
+      hotPoems.value[hotPoemIndex].likes = result.likes
+    }
+    
+    // 更新所有诗词列表中的点赞数
+    const allPoemIndex = allPoems.value.findIndex((p: any) => p.id === poemId)
+    if (allPoemIndex !== -1) {
+      allPoems.value[allPoemIndex].likes = result.likes
+    }
+    
+    console.log(`点赞成功，当前点赞数: ${result.likes}`)
+  } catch (error: any) {
+    console.error('Supabase点赞失败，使用本地存储:', error)
+    
+    // 使用本地存储作为备用方案
+    try {
+      // 获取本地存储的点赞数据
+      const localLikes = JSON.parse(localStorage.getItem('poem_likes') || '{}')
+      const currentLikes = localLikes[poemId] || 0
+      
+      // 模拟点赞操作（增加1）
+      const newLikes = currentLikes + 1
+      localLikes[poemId] = newLikes
+      localStorage.setItem('poem_likes', JSON.stringify(localLikes))
+      
+      // 更新界面
+      if (selectedPoem.value && selectedPoem.value.id === poemId) {
+        selectedPoem.value.likes = newLikes
+      }
+      
+      const hotPoemIndex = hotPoems.value.findIndex((p: any) => p.id === poemId)
+      if (hotPoemIndex !== -1) {
+        hotPoems.value[hotPoemIndex].likes = newLikes
+      }
+      
+      const allPoemIndex = allPoems.value.findIndex((p: any) => p.id === poemId)
+      if (allPoemIndex !== -1) {
+        allPoems.value[allPoemIndex].likes = newLikes
+      }
+      
+      console.log(`本地点赞成功，当前点赞数: ${newLikes}`)
+    } catch (localError) {
+      console.error('本地点赞也失败:', localError)
+      alert('点赞功能暂时不可用，请稍后重试')
+    }
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 收藏诗词
+const favoritePoem = async (poemId: number) => {
+  if (isLoading.value) return
+  
+  // 检查用户是否登录
+  if (!currentUser.value) {
+    alert('请先登录后再收藏')
+    return
+  }
+
+  isLoading.value = true
+  
+  try {
+    // 尝试使用Supabase API
+    const result = await supabaseInteractionApi.favoritePoem(poemId, currentUser.value.id)
+    
+    // 更新诗词详情模态框中的收藏数
+    if (selectedPoem.value && selectedPoem.value.id === poemId) {
+      selectedPoem.value.favorites = result.favorites
+    }
+    
+    // 更新热门诗词列表中的收藏数
+    const hotPoemIndex = hotPoems.value.findIndex((p: any) => p.id === poemId)
+    if (hotPoemIndex !== -1) {
+      hotPoems.value[hotPoemIndex].favorites = result.favorites
+    }
+    
+    // 更新所有诗词列表中的收藏数
+    const allPoemIndex = allPoems.value.findIndex((p: any) => p.id === poemId)
+    if (allPoemIndex !== -1) {
+      allPoems.value[allPoemIndex].favorites = result.favorites
+    }
+    
+    console.log(`收藏成功，当前收藏数: ${result.favorites}`)
+  } catch (error: any) {
+    console.error('Supabase收藏失败，使用本地存储:', error)
+    
+    // 使用本地存储作为备用方案
+    try {
+      // 获取本地存储的收藏数据
+      const localFavorites = JSON.parse(localStorage.getItem('poem_favorites') || '{}')
+      const currentFavorites = localFavorites[poemId] || 0
+      
+      // 模拟收藏操作（增加1）
+      const newFavorites = currentFavorites + 1
+      localFavorites[poemId] = newFavorites
+      localStorage.setItem('poem_favorites', JSON.stringify(localFavorites))
+      
+      // 更新界面
+      if (selectedPoem.value && selectedPoem.value.id === poemId) {
+        selectedPoem.value.favorites = newFavorites
+      }
+      
+      const hotPoemIndex = hotPoems.value.findIndex((p: any) => p.id === poemId)
+      if (hotPoemIndex !== -1) {
+        hotPoems.value[hotPoemIndex].favorites = newFavorites
+      }
+      
+      const allPoemIndex = allPoems.value.findIndex((p: any) => p.id === poemId)
+      if (allPoemIndex !== -1) {
+        allPoems.value[allPoemIndex].favorites = newFavorites
+      }
+      
+      console.log(`本地收藏成功，当前收藏数: ${newFavorites}`)
+    } catch (localError) {
+      console.error('本地收藏也失败:', localError)
+      alert('收藏功能暂时不可用，请稍后重试')
+    }
+  } finally {
+    isLoading.value = false
+  }
+}
+
+
+
+// 显示诗词详情
+const showPoemDetail = (poemId: number) => {
+  const poem = allPoems.value.find(p => p.id === poemId)
+  if (poem) {
+    selectedPoem.value = poem
+  }
+}
+
+const submitComment = async () => {
+  if (!newComment.value.trim()) {
+    alert('请输入评论内容')
+    return
+  }
+
+  // 检查用户是否登录
+  if (!currentUser.value) {
+    alert('请先登录后再发表评论')
+    return
+  }
+
+  // 添加超时控制
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('评论操作超时，请检查网络连接')), 10000)
+  })
+
+  try {
+    // 如果有选中的诗词，则关联评论到该诗词
+    const poemId = selectedPoem.value?.id || 1 // 默认使用第一首诗词
+    
+    // 调用Supabase API添加评论（带超时控制）
+    const commentData = await Promise.race([
+      supabaseInteractionApi.addComment(
+        poemId, 
+        currentUser.value.id, 
+        newComment.value.trim()
+      ),
+      timeoutPromise
+    ])
+    
     newComment.value = ''
+    alert('评论发表成功！')
+    
+    // 重新加载评论数据，确保显示最新评论
+    await loadCommentsFromDatabase()
+    
+  } catch (error: any) {
+    console.error('发表评论失败:', error)
+    
+    // 如果Supabase调用失败，使用本地存储作为备用方案
+    try {
+      console.log('Supabase评论失败，使用本地存储作为备用方案')
+      comments.value.unshift({
+        id: comments.value.length + 1,
+        author: currentUser.value.username || '当前用户',
+        avatar: 'https://ai-public.mastergo.com/ai/img_res/0ebece82af24e565971af2825f1f54a8.jpg',
+        date: '刚刚',
+        content: newComment.value.trim(),
+        likes: 0
+      })
+      newComment.value = ''
+      alert('评论发表成功（本地存储）！')
+    } catch (localError) {
+      console.error('本地评论也失败:', localError)
+      alert('评论功能暂时不可用，请稍后重试')
+    }
+  }
+}
+
+// 从数据库加载评论
+const loadCommentsFromDatabase = async () => {
+  commentsLoading.value = true
+  try {
+    // 获取评论总数
+    const { count } = await supabase
+      .from('comments')
+      .select('*', { count: 'exact', head: true })
+    
+    totalComments.value = count || 0
+    
+    // 计算分页参数
+    const startIndex = (currentPage.value - 1) * commentsPerPage
+    const endIndex = startIndex + commentsPerPage - 1
+    
+    // 从数据库加载评论，按时间倒序排列
+    const { data: commentData, error } = await supabase
+      .from('comments')
+      .select(`
+        *,
+        profiles (
+          username,
+          avatar_url
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .range(startIndex, endIndex)
+    
+    if (error) throw error
+    
+    // 转换评论数据格式
+    comments.value = commentData.map(comment => ({
+      id: comment.id,
+      author: comment.profiles?.username || '匿名用户',
+      avatar: comment.profiles?.avatar_url || 'https://ai-public.mastergo.com/ai/img_res/0ebece82af24e565971af2825f1f54a8.jpg',
+      date: formatDate(comment.created_at),
+      content: comment.content,
+      likes: comment.likes || 0
+    }))
+    
+  } catch (error) {
+    console.error('加载评论失败:', error)
+    // 如果数据库加载失败，使用默认评论数据
+    comments.value = [
+      {
+        id: 1,
+        author: '墨韵书香',
+        avatar: 'https://ai-public.mastergo.com/ai/img_res/8dffa57897e12c1023bcf70a26df9333.jpg',
+        date: '2023年 11月 15日',
+        content: '这首《静夜思》以明白如话的朴素语言，表达出深沉的思乡之情。"举头望明月，低头思故乡"这一仰一俯的动作，把游子的思乡之情表现得淋漓尽致。',
+        likes: 24
+      },
+      {
+        id: 2,
+        author: '诗韵清风',
+        avatar: 'https://ai-public.mastergo.com/ai/img_res/b1a6adaa941787143bde660b2a7cd0bb.jpg',
+        date: '2023年 11月 16日',
+        content: '深有同感！李白的这首诗虽然语言简单，但意境深远，千百年来引起无数游子的共鸣。',
+        likes: 8
+      }
+    ]
+  } finally {
+    commentsLoading.value = false
+  }
+}
+
+// 格式化日期
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+  
+  if (diffMins < 1) return '刚刚'
+  if (diffMins < 60) return `${diffMins}分钟前`
+  if (diffHours < 24) return `${diffHours}小时前`
+  if (diffDays < 7) return `${diffDays}天前`
+  
+  return date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
+// 翻页功能
+const goToPage = (page: number) => {
+  if (page < 1 || page > Math.ceil(totalComments.value / commentsPerPage)) return
+  currentPage.value = page
+  loadCommentsFromDatabase()
+}
+
+// 点赞评论（示例功能，需要后端支持）
+const likeComment = (commentId: number) => {
+  if (!currentUser.value) {
+    alert('请先登录后再点赞评论')
+    return
+  }
+  
+  // 这里可以添加评论点赞的API调用
+  const comment = comments.value.find((c: any) => c.id === commentId)
+  if (comment) {
+    comment.likes += 1
+    console.log(`点赞评论 ${commentId} 成功`)
   }
 }
 </script>

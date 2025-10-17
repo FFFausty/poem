@@ -1,5 +1,6 @@
 <template>
   <div class="create-poem">
+    <NavBar />
     <div class="container">
       <h1>诗词创作</h1>
       
@@ -63,6 +64,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import NavBar from '@/components/NavBar.vue'
 
 const router = useRouter()
 
@@ -116,7 +118,8 @@ const validateForm = (): boolean => {
 
 <style scoped>
 .create-poem {
-  padding: 40px 0;
+  min-height: 100vh;
+  padding-top: 80px;
 }
 
 .create-poem h1 {

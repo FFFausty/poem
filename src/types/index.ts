@@ -47,9 +47,9 @@ export interface PoemSearchParams {
 export interface PoemListResponse {
   poems: Poem[]
   total: number
-  page: number
-  limit: number
-  hasMore: boolean
+  page?: number
+  limit?: number
+  hasMore?: boolean
 }
 
 /**
@@ -60,7 +60,7 @@ export interface PoemListResponse {
  * 用户基础信息接口
  */
 export interface UserBase {
-  id: number
+  id: string
   username: string
   email: string
   createdAt: string
@@ -76,6 +76,8 @@ export interface User extends UserBase {
   points?: number
   isVerified?: boolean
   lastLogin?: string
+  created_at?: string
+  updated_at?: string
 }
 
 /**
@@ -92,7 +94,7 @@ export interface RegisterParams {
  * 用户登录参数接口
  */
 export interface LoginParams {
-  username: string
+  email: string
   password: string
   rememberMe?: boolean
 }
@@ -273,7 +275,7 @@ export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
 /**
  * 必需字段类型
  */
-export type Required<T, K extends keyof T> = T & Required<Pick<T, K>>
+export type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>
 
 /**
  * 深度只读类型
@@ -296,17 +298,17 @@ export type DeepPartial<T> = {
 /**
  * 函数参数类型
  */
-export type Parameters<T> = T extends (...args: infer P) => any ? P : never
+export type FunctionParameters<T> = T extends (...args: infer P) => any ? P : never
 
 /**
  * 函数返回类型
  */
-export type ReturnType<T> = T extends (...args: any[]) => infer R ? R : never
+export type FunctionReturnType<T> = T extends (...args: any[]) => infer R ? R : never
 
 /**
  * 异步函数返回类型
  */
-export type AsyncReturnType<T> = T extends (...args: any[]) => Promise<infer R> 
+export type AsyncFunctionReturnType<T> = T extends (...args: any[]) => Promise<infer R> 
   ? R 
   : T extends (...args: any[]) => infer R 
     ? R 

@@ -15,29 +15,37 @@
       <!-- 导航菜单区域 -->
       <div class="nav-menu">
         <!-- 主要导航链接 -->
-        <nav-link 
+        <router-link 
           to="/" 
-          label="首页"
-          :active="currentRoute === '/'"
-        />
-        <nav-link 
+          class="nav-link"
+          :class="{ active: currentRoute === '/' }"
+        >
+          首页
+        </router-link>
+        <router-link 
+          to="/category" 
+          class="nav-link"
+          :class="{ active: currentRoute === '/category' }"
+        >
+          诗词分类
+        </router-link>
+        <router-link 
           to="/search" 
-          label="搜索"
-          :active="currentRoute === '/search'"
-        />
-        <nav-link 
-          to="/create" 
-          label="创作"
-          :active="currentRoute === '/create'"
-        />
+          class="nav-link"
+          :class="{ active: currentRoute === '/search' }"
+        >
+          诗词搜索
+        </router-link>
         
         <!-- 用户相关区域 -->
         <div v-if="isLoggedIn" class="user-menu">
-          <nav-link 
+          <router-link 
             to="/user" 
-            :label="userDisplayName"
-            :active="currentRoute === '/user'"
-          />
+            class="nav-link"
+            :class="{ active: currentRoute === '/user' }"
+          >
+            {{ userDisplayName }}
+          </router-link>
           <button 
             class="btn btn-secondary" 
             @click="handleLogout"
@@ -70,58 +78,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores'
 import type { User } from '@/stores'
 
-/**
- * 导航链接组件 Props 接口定义
- */
-interface NavLinkProps {
-  to: string
-  label: string
-  active?: boolean
-}
-
-/**
- * 导航链接组件
- * 遵循单一职责原则，只负责导航链接的渲染
- */
-const NavLink = defineComponent<NavLinkProps>({
-  name: 'NavLink',
-  props: {
-    to: {
-      type: String,
-      required: true,
-      validator: (value: string) => value.startsWith('/')
-    },
-    label: {
-      type: String,
-      required: true,
-      validator: (value: string) => value.length > 0
-    },
-    active: {
-      type: Boolean,
-      default: false
-    }
-  },
-  setup(props) {
-    return () => (
-      <router-link 
-        to={props.to}
-        class={['nav-link', { active: props.active }]}
-        aria-current={props.active ? 'page' : undefined}
-      >
-        {props.label}
-      </router-link>
-    )
-  }
-})
-
-/**
- * 导航栏主组件逻辑
- */
 const route = useRoute()
 const userStore = useUserStore()
 
@@ -156,13 +117,11 @@ const updateCurrentRoute = (): void => {
 
 /**
  * 处理用户退出登录
- * @emits logout 退出登录事件
  */
 const handleLogout = (): void => {
   // 确认退出
   if (confirm('确定要退出登录吗？')) {
     userStore.logout()
-    // 可以在这里添加退出成功后的回调逻辑
     console.log('用户已退出登录')
   }
 }

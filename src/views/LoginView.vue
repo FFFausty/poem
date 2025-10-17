@@ -1,17 +1,18 @@
 <template>
   <div class="login-view">
+    <NavBar />
     <div class="container">
       <div class="login-form">
         <h1>用户登录</h1>
         
         <form @submit.prevent="handleLogin">
           <div class="form-group">
-            <label>用户名或邮箱</label>
+            <label>邮箱</label>
             <input 
-              v-model="loginForm.username" 
-              type="text" 
+              v-model="loginForm.email" 
+              type="email" 
               required 
-              placeholder="请输入用户名或邮箱"
+              placeholder="请输入邮箱"
             />
           </div>
           
@@ -42,18 +43,20 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores'
+import { supabase } from '@/lib/supabase'
+import NavBar from '@/components/NavBar.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 
 const loading = ref(false)
 const loginForm = reactive({
-  username: '',
+  email: '',
   password: ''
 })
 
 const handleLogin = async () => {
-  if (!loginForm.username || !loginForm.password) {
+  if (!loginForm.email || !loginForm.password) {
     alert('请填写完整信息')
     return
   }
@@ -61,20 +64,26 @@ const handleLogin = async () => {
   loading.value = true
   
   try {
-    // 模拟登录
-    setTimeout(() => {
-      userStore.setUser({
-        id: 1,
-        username: loginForm.username,
-        email: 'user@example.com',
-        createdAt: new Date().toISOString()
-      })
-      userStore.setToken('mock-token')
+    const success = await userStore.login({
+      email: loginForm.email,
+      password: loginForm.password
+    })
+
+    if (success) {
       router.push('/')
-    }, 1000)
-  } catch (error) {
-    console.error('Login error:', error)
-    alert('登录失败，请重试')
+    } else {
+      // 显示具体的错误信息
+      const errorMessage = userStore.error || '登录失败，请检查网络连接或联系管理员'
+      console.error('登录失败:', errorMessage)
+      alert(errorMessage)
+    }
+  } catch (error: any) {
+    console.error('Login error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code
+    })
+    alert(error.message || '登录失败，请重试')
   } finally {
     loading.value = false
   }
@@ -83,9 +92,9 @@ const handleLogin = async () => {
 
 <style scoped>
 .login-view {
-  padding: 60px 0;
   min-height: 100vh;
   background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+  padding-top: 0;
 }
 
 .login-form {

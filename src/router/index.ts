@@ -27,6 +27,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '诗词搜索' }
   },
   {
+    path: '/category',
+    name: 'Category',
+    component: () => import('@/views/CategoryView.vue'),
+    meta: { title: '诗词分类' }
+  },
+  {
     path: '/user',
     name: 'UserCenter',
     component: () => import('@/views/UserCenterView.vue'),
@@ -36,7 +42,13 @@ const routes: RouteRecordRaw[] = [
     path: '/create',
     name: 'CreatePoem',
     component: () => import('@/views/CreatePoemView.vue'),
-    meta: { title: '诗词创作', requiresAuth: true }
+    meta: { title: '诗词添加', requiresAuth: true }
+  },
+  {
+    path: '/authors',
+    name: 'AuthorIntroduction',
+    component: () => import('@/views/AuthorIntroductionView.vue'),
+    meta: { title: '诗人介绍' }
   },
   {
     path: '/login',

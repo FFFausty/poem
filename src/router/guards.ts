@@ -87,15 +87,25 @@ export const titleGuard: RouteGuard = (to, from, next) => {
  * @param next 导航函数
  */
 export const scrollGuard: RouteGuard = (to, from, next) => {
-  // 如果路由有保存的滚动位置，则恢复
-  if (to.meta?.savedPosition) {
-    setTimeout(() => {
-      window.scrollTo(to.meta.savedPosition)
-    }, 0)
-  } else {
-    // 否则滚动到顶部
-    window.scrollTo(0, 0)
-  }
+  // 安全地处理滚动行为
+  setTimeout(() => {
+    try {
+      // 确保window对象存在且scrollTo方法可用
+      if (typeof window !== 'undefined' && window && window.scrollTo) {
+        // 如果路由有保存的滚动位置，则恢复
+        if (to.meta?.savedPosition && typeof to.meta.savedPosition === 'object') {
+          const { x = 0, y = 0 } = to.meta.savedPosition
+          window.scrollTo(x, y)
+        } else {
+          // 否则滚动到顶部
+          window.scrollTo(0, 0)
+        }
+      }
+    } catch (error) {
+      console.warn('Scroll guard error:', error)
+      // 静默处理错误，不中断应用
+    }
+  }, 0)
   
   next()
 }

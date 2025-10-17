@@ -1,5 +1,6 @@
 <template>
   <div class="poem-detail">
+    <NavBar />
     <div class="container">
       <div class="poem-header">
         <h1>{{ poem?.title }}</h1>
@@ -37,8 +38,12 @@
       </div>
 
       <div class="poem-actions">
-        <button class="btn btn-primary" @click="handleLike">
-          👍 点赞 ({{ poem?.likes || 0 }})
+        <button 
+          :class="['btn', isLiked ? 'btn-liked' : 'btn-primary']" 
+          @click="handleLike"
+          :disabled="isLoading"
+        >
+          {{ isLiked ? '❤️' : '👍' }} {{ isLiked ? '已点赞' : '点赞' }} ({{ poem?.likes || 0 }})
         </button>
         <button class="btn btn-secondary" @click="handleFavorite">
           ⭐ 收藏 ({{ poem?.favorites || 0 }})
@@ -52,43 +57,76 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { usePoemStore } from '@/stores'
-import type { Poem } from '@/stores'
+import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { usePoemStore, useUserStore } from '@/stores'
+import type { Poem } from '@/lib/supabase'
+import NavBar from '@/components/NavBar.vue'
 
 const route = useRoute()
+const router = useRouter()
 const poemStore = usePoemStore()
+const userStore = useUserStore()
 
 const poem = ref<Poem | null>(null)
+const isLiked = ref(false)
+const isLoading = ref(false)
 
 onMounted(async () => {
   const poemId = parseInt(route.params.id as string)
-  // 模拟数据
-  poem.value = {
-    id: poemId,
-    title: '静夜思',
-    author: '李白',
-    dynasty: '唐',
-    content: '床前明月光，疑是地上霜。举头望明月，低头思故乡。',
-    tags: ['思乡', '月亮'],
-    annotations: [
-      '床前：床前的地面',
-      '疑是：好像是',
-      '举头：抬头',
-      '思故乡：思念家乡'
-    ],
-    translation: '明亮的月光洒在床前的地面上，好像地上泛起了一层白霜。我抬起头来，看那天空中的明月，不由得低头沉思，想起远方的家乡。',
-    appreciation: '这首诗写的是在寂静的月夜思念家乡的感受。诗的前两句，是写诗人在作客他乡的特定环境中一刹那间所产生的错觉。后两句通过动作神态的刻画，深化思乡之情。',
-    likes: 1234,
-    favorites: 567,
-    createdAt: '2024-01-01'
+  
+  try {
+    // 获取诗词详情
+    const poemData = await poemStore.fetchPoemById(poemId)
+    poem.value = poemData
+    
+    // 检查用户是否已点赞
+    if (userStore.isLoggedIn) {
+      const likeStatus = await poemStore.checkUserLike(poemId)
+      isLiked.value = likeStatus.liked
+    }
+  } catch (error) {
+    console.error('获取诗词详情失败:', error)
+    // 模拟数据（备用）
+    poem.value = {
+      id: poemId,
+      title: '静夜思',
+      author: '李白',
+      dynasty: '唐',
+      content: '床前明月光，疑是地上霜。举头望明月，低头思故乡。',
+      category: '诗',
+      tags: ['思乡', '月亮'],
+      analysis: '这首诗写的是在寂静的月夜思念家乡的感受。诗的前两句，是写诗人在作客他乡的特定环境中一刹那间所产生的错觉。后两句通过动作神态的刻画，深化思乡之情。',
+      likes: 1234,
+      favorites: 567,
+      image: '',
+      created_at: '2024-01-01',
+      updated_at: '2024-01-01'
+    }
   }
 })
 
-const handleLike = () => {
-  if (poem.value) {
-    poemStore.likePoem(poem.value.id)
+const handleLike = async () => {
+  if (!poem.value) return
+  
+  // 检查用户是否登录
+  if (!userStore.isLoggedIn) {
+    router.push('/login')
+    return
+  }
+  
+  try {
+    console.log('开始点赞操作')
+    isLoading.value = true
+    const result = await poemStore.likePoem(poem.value.id)
+    isLiked.value = result.liked
+    poem.value.likes = result.likes
+    console.log('点赞操作成功', result)
+  } catch (error: any) {
+    console.error('点赞操作失败:', error)
+    alert(error.message || '操作失败，请重试')
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -106,7 +144,8 @@ const handleShare = () => {
 
 <style scoped>
 .poem-detail {
-  padding: 40px 0;
+  min-height: 100vh;
+  padding-top: 0;
 }
 
 .poem-header {
@@ -172,6 +211,21 @@ const handleShare = () => {
   gap: 15px;
   justify-content: center;
   flex-wrap: wrap;
+}
+
+.btn-liked {
+  background-color: #ec4899;
+  color: white;
+  border: none;
+}
+
+.btn-liked:hover {
+  background-color: #db2777;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @media (max-width: 768px) {

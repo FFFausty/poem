@@ -1,5 +1,6 @@
 <template>
   <div class="register-view">
+    <NavBar />
     <div class="container">
       <div class="register-form">
         <h1>用户注册</h1>
@@ -66,6 +67,8 @@ import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores'
 import { validatePasswordStrength } from '@/utils'
+import { supabase } from '@/lib/supabase'
+import NavBar from '@/components/NavBar.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -111,20 +114,21 @@ const handleRegister = async () => {
   loading.value = true
   
   try {
-    // 模拟注册
-    setTimeout(() => {
-      userStore.setUser({
-        id: 1,
-        username: registerForm.username,
-        email: registerForm.email,
-        createdAt: new Date().toISOString()
-      })
-      userStore.setToken('mock-token')
-      router.push('/')
-    }, 1000)
-  } catch (error) {
+    const success = await userStore.register({
+      username: registerForm.username,
+      email: registerForm.email,
+      password: registerForm.password
+    })
+
+    if (success) {
+      alert('注册成功！请检查邮箱验证邮件。')
+      router.push('/login')
+    } else {
+      alert('注册失败，请重试')
+    }
+  } catch (error: any) {
     console.error('Register error:', error)
-    alert('注册失败，请重试')
+    alert(error.message || '注册失败，请重试')
   } finally {
     loading.value = false
   }
@@ -133,9 +137,9 @@ const handleRegister = async () => {
 
 <style scoped>
 .register-view {
-  padding: 60px 0;
   min-height: 100vh;
   background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+  padding-top: 0;
 }
 
 .register-form {
