@@ -138,7 +138,7 @@ const sendMessage = async () => {
   } else {
     // 开发环境：尝试调用n8n webhook
     try {
-      const response = await axios.post('/api/webhook/ai-assistant', {
+      const response = await axios.post('/api/webhook/59c166b5-9176-4d42-9d12-abadb682b80b/chat', {
         message: content,
         context: {
           userRole: '诗词爱好者',
@@ -148,7 +148,7 @@ const sendMessage = async () => {
       })
 
       // 添加助手回复
-      addMessage('assistant', response.data.response || '我暂时无法回答这个问题。')
+      addMessage('assistant', response.data.output || '我暂时无法回答这个问题。')
     } catch (error) {
       console.error('发送消息失败:', error)
       
