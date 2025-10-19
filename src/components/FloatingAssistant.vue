@@ -130,25 +130,32 @@ const sendMessage = async () => {
   userInput.value = ''
   showQuickActions.value = false
 
-  try {
-    // 调用n8n webhook（通过代理解决CORS问题）
-    const response = await axios.post('/api/webhook/ai-assistant', {
-      message: content,
-      context: {
-        userRole: '诗词爱好者',
-        currentPage: window.location.pathname,
-        timestamp: new Date().toISOString()
-      }
-    })
-
-    // 添加助手回复
-    addMessage('assistant', response.data.response || '我暂时无法回答这个问题。')
-  } catch (error) {
-    console.error('发送消息失败:', error)
-    
-    // 降级处理：提供本地AI回复
+  // 生产环境直接使用本地AI回复，避免API调用错误
+  if (import.meta.env.PROD) {
+    // 生产环境：直接使用本地AI回复
     const localResponse = generateLocalAIResponse(content)
     addMessage('assistant', localResponse)
+  } else {
+    // 开发环境：尝试调用n8n webhook
+    try {
+      const response = await axios.post('/api/webhook/ai-assistant', {
+        message: content,
+        context: {
+          userRole: '诗词爱好者',
+          currentPage: window.location.pathname,
+          timestamp: new Date().toISOString()
+        }
+      })
+
+      // 添加助手回复
+      addMessage('assistant', response.data.response || '我暂时无法回答这个问题。')
+    } catch (error) {
+      console.error('发送消息失败:', error)
+      
+      // 降级处理：提供本地AI回复
+      const localResponse = generateLocalAIResponse(content)
+      addMessage('assistant', localResponse)
+    }
   }
 }
 
